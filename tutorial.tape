@@ -14,9 +14,8 @@
 # You MUST download and extract the SRILM code yourself due to licensing restrictions.
 #
 # Some dependencies you should be aware of:
-# * curl
+# * wget
 # * python 2.7+
-# * cython 0.14.1+
 # * boost
 #
 # For help compiling cdec see http://www.cdec-decoder.org/guide/compiling.html
@@ -37,11 +36,6 @@ package cdec :: .versioner=git .repo="git://github.com/redpony/cdec.git" .ref=HE
   # Build the python extensions
   cd python
   python setup.py build
-}
-
-package multeval :: .versioner=git .repo="git://github.com/jhclark/multeval.git" .ref=HEAD {
-  ./get_deps.sh
-  ant
 }
 
 # Sorry folks, due to the nasty license, you'll have to download the software and update this path yourselves
@@ -174,7 +168,7 @@ task tune_mert : cdec
     < cdec_ini=$ini@make_cdec_ini
     > weights=dpmert/weights.final
     :: cores=$tune_cores {
-  $cdec/dpmert/dpmert.pl -w $weights_init -d $dev_sgm -c $cdec_ini -j $cores
+  $cdec/training/dpmert/dpmert.pl -w $weights_init -d $dev_sgm -c $cdec_ini -j $cores
 }
 
 # Tutorial step #11
@@ -186,7 +180,7 @@ task decode : cdec
     < devtest_sgm=$sgm@extract_gra[ExtractSection:devtest]
     > scores
     :: cores=$decode_cores {
-  $cdec/dpmert/decode-and-evaluate.pl -c $cdec_ini -w $weights -i $devtest_sgm -j $cores &> $scores
+  $cdec/training/utils/decode-and-evaluate.pl -c $cdec_ini -w $weights -i $devtest_sgm -j $cores &> $scores
 }
 
 # Grab the primary field that we care about from the scores
@@ -202,13 +196,3 @@ global {
   ducttape_experimental_packages=true
   ducttape_experimental_submitters=true
 }
-
-#task score : multeval
-#  < hyps=$hyps@decode
-#  < e_test=@download
-#  > scores
-#  :: tgt_lang=en
-#  :: score_cores=4
-#  :: .submitter=shell .q=shared .cpus=4 .walltime="0:15:00" .vmem=6g {
-#  $multeval/multeval.sh eval --refs $e_test --meteor.language $tgt_lang --threads $score_cores --hyps-baseline $hyps > $scores
-#}
