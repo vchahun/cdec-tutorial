@@ -9,13 +9,9 @@
 # modified in complex ways so that you can easily insert your new ideas
 # with minimal effort.
 
-# BUILDING:
-# You will likely have to edit the 'package' blocks such that the paths match your local environment.
-# You MUST download and extract the SRILM code yourself due to licensing restrictions.
-#
 # Some dependencies you should be aware of:
 # * wget
-# * python 2.7+
+# * python 2.7
 # * boost
 #
 # For help compiling cdec see http://www.cdec-decoder.org/guide/compiling.html
@@ -36,11 +32,6 @@ package cdec :: .versioner=git .repo="git://github.com/redpony/cdec.git" .ref=HE
   # Build the python extensions
   cd python
   python setup.py build
-}
-
-# Sorry folks, due to the nasty license, you'll have to download the software and update this path yourselves
-package srilm :: cores=16 .versioner=disk .path="/home/jhclark/workspace/srilm" {
-  make -j $cores SRILM=$PWD MACHINE_TYPE=i686-m64 MAKE_PIC=yes World
 }
 
 # Tutorial Step #1
@@ -91,14 +82,11 @@ task align_sym : cdec
 # Tutorial Step #5
 # Estimated time: ~1 minute
 # Compile a suffix array over the training data for use in grammar extraction
-# Note: The "dot parameters" below are for use with ducttape's scheduler integration.
-#       If you're interested, go check out the ducttape tutorial
 task index_training : cdec
     < train=$out@filter_training
     < align=$alignments@align_sym
     > ini
-    > sa
-    :: .cpus=1 .walltime="0:30:00" .vmem=10g .submitter=shell .q=shared {
+    > sa {
 
   export PYTHONPATH=`echo $cdec/python/build/lib.*`
   python -m cdec.sa.compile -b $train -a $align -c $ini -o $sa
@@ -113,8 +101,7 @@ task extract_gra : cdec
     < corpus=(ExtractSection: dev=$out@preproc_corpus[DataSection:dev] devtest=$out@preproc_corpus[DataSection:devtest])
     < ini=$ini@index_training
     > sgm
-    :: cores=$extract_gra_cores
-    :: .cpus=1 .walltime="3:00:00" .vmem=10g .submitter=shell .q=shared {
+    :: cores=$extract_gra_cores {
 
   # SGM file contains input sentences surrounded by sgml markup
   # that tells the decoder where to find the grammar for each sentence
@@ -126,12 +113,12 @@ task extract_gra : cdec
 # Build the target language model
 # (The task "grab_parallel_tgt" in tutorial.tconf is also part of tutorial step #7)
 # More on language models at http://www.cdec-decoder.org/concepts/language-models.html
-task build_lm : srilm
+task build_lm : cdec
     < corpus=$lm_data
     > arpa
     :: lm_order=$lm_order {
 
-  cat $corpus | $srilm/bin/*/ngram-count -unk -text - -interpolate -kndiscount -order $lm_order -lm $arpa
+  cat $corpus | $cdec/klm/lm/builder/builder --order $lm_order > $arpa
 }
 
 # Tutorial step #8
@@ -194,5 +181,4 @@ summary scores {
 # Nuts and bolts:
 global {
   ducttape_experimental_packages=true
-  ducttape_experimental_submitters=true
 }
