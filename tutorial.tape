@@ -40,7 +40,7 @@ package cdec :: .versioner=git .repo="git://github.com/redpony/cdec.git" .ref=HE
 task preproc_corpus : cdec
     < in=(DataSection: train=$train_data dev=$dev_data devtest=$devtest_data)
     > out {
-  $cdec/corpus/tokenize-anything.sh < $in > $out
+  $cdec/corpus/tokenize-anything.sh < $in | $cdec/corpus/lowercase.pl > $out
 }
 
 # Tutorial Step #2
