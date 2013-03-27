@@ -64,7 +64,7 @@ task align_bidir : cdec
     > alignments
     :: direction_flag=(AlignDirection: forward="" reverse="-r") {
 
-  $cdec/training/fast_align -i $train -d -v $direction_flag > $alignments
+  $cdec/word-aligner/fast_align -i $train -d -v $direction_flag > $alignments
 }
 
 # Tutorial Step #4
